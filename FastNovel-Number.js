@@ -1,0 +1,95 @@
+function download(filename, text) {
+  let element = document.createElement('a');
+  element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+  element.setAttribute('download', filename);
+
+  element.style.display = 'none';
+  document.body.appendChild(element);
+
+  element.click();
+
+  document.body.removeChild(element);
+}
+
+async function getChapter(chapterUrl){
+	let chapterDownload = await fetch(chapterUrl, {
+		"headers": {
+			"sec-ch-ua": "\"Chromium\";v=\"88\", \"Google Chrome\";v=\"88\", \";Not A Brand\";v=\"99\"",
+			"sec-ch-ua-mobile": "?0",
+			"upgrade-insecure-requests": "1"
+		},
+		"referrer": "https://fastnovel.net/nanomancer-reborn-ive-become-a-snow-girl2-156/",
+		"referrerPolicy": "strict-origin-when-cross-origin",
+		"body": null,
+		"method": "GET",
+		"mode": "cors",
+		"credentials": "omit"
+	});
+
+	if (chapterDownload.ok) {
+		let response = await chapterDownload.text();
+		document.open();
+		document.write(response);
+		document.close()
+
+		let title = document.querySelector("h1.episode-name");
+		let matched = title.textContent.match(/(Chapter.*)/g);
+		title.innerHTML = matched[0];
+		let content = document.querySelector("div#chapter-body");
+		content.prepend(title);
+		content.innerHTML = content.innerHTML.replaceAll("…","...").replace(/Find authorized novels.*for visiting/g, "").replace(/([A-z])\.([A-z])/g, function (match, p1, p2, offset, string){return p1+p2;}).replace(/([A-z])\.([A-z])/g, function (match, p1, p2, offset, string){return p1+p2;});
+
+		return content.innerHTML;
+	}
+}
+
+
+// Start file download.
+//download("hello.txt","This is the content of my file :)");
+async function main()
+{
+	let volumeLinks = ["", []]
+	let chapters = document.querySelectorAll("div.book ul a");
+	let volumes = [[]];
+	let perVolume = 100;
+	let title = document.querySelector("h1.name").textContent;
+	let author = document.querySelector("ul.meta-data>li a").textContent;
+
+	console.log(chapters.length / perVolume + 1);
+
+	for(vol = 0; vol < Math.ceil(chapters.length/perVolume); vol++)
+	{
+		let chapterLinks = [];
+
+		for(chap = 0; chap < perVolume && vol * perVolume + chap < chapters.length; chap++)
+		{
+			let chapIndex = vol * perVolume + chap;
+			chapterLinks[chapters[chapIndex].text] = chapters[chapIndex].href;
+		}
+
+		volumeLinks[vol] = ["Volume " + (vol + 1), chapterLinks];
+	}
+
+	//console.log(volumeLinks);
+
+	for (volume in volumeLinks) {
+		//if(volumeLinks[volume][0] == "Volume 10")
+		//{
+		let toDownload = ""
+
+		for (link in volumeLinks[volume][1]) {
+			//console.log(link)
+			if (volumeLinks[volume][1][link] != undefined) {
+				//console.log(volumeLinks[volume][1][link])
+				toDownload += await getChapter(volumeLinks[volume][1][link]);
+			}
+			//console.log(download)
+		}
+
+		let volumeName = volumeLinks[volume][0].replaceAll(": "," ").replaceAll(":","").replaceAll(" - "," ").replace(/Volume (\d)\b/,"Volume 0$1");
+		download(title + " - " + volumeName + " - " + author + ".html", toDownload)
+		//}
+	}
+}
+
+main();
